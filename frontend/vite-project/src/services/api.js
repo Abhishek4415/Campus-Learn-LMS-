@@ -4,7 +4,7 @@ import axios from 'axios'
 // Create an Axios instance with a fixed backend address
 const API = axios.create({
   // Base URL of the backend server
-  baseURL: 'http://localhost:5000'
+  baseURL: 'https://campus-learn-lms.onrender.com'
 })
 
 // Automatically attach token to every request
