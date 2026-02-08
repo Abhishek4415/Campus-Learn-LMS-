@@ -37,7 +37,11 @@
   const app = express()
 
   // Allow requests from other websites (frontend)
-  app.use(cors())
+app.use(cors({
+  origin: ['https://campus-learn-lms-zqft.vercel.app'],
+  credentials: true
+}))
+
 
   //socket.io
   const httpServer = http.createServer(app);  // Changed variable name
