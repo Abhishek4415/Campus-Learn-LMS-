@@ -9,7 +9,7 @@ export const askAI = async (req, res) => {
     // 🔁 Ensure notes are loaded
     try {
       await axios.post(
-        'http://127.0.0.1:8000/ask',
+        'https://campus-learn-lms-1.onrender.com/ask',
         { question },
         { timeout: 2000 }
       )
@@ -20,14 +20,14 @@ export const askAI = async (req, res) => {
       for (const note of notes) {
         const absolutePath = path.resolve(note.fileUrl)
 
-        await axios.post('http://127.0.0.1:8000/load', {
+        await axios.post('https://campus-learn-lms-1.onrender.com/load', {
           file_path: absolutePath
         })
       }
     }
 
     // Ask again after loading
-    const response = await axios.post('http://127.0.0.1:8000/ask', {
+    const response = await axios.post('https://campus-learn-lms-1.onrender.com/ask', {
       question
     })
 
@@ -52,7 +52,7 @@ export const loadNotesToAI = async (req, res) => {
       // Convert relative path to absolute path
       const absolutePath = path.resolve(note.fileUrl)
 
-      await axios.post('http://127.0.0.1:8000/load', {
+      await axios.post('https://campus-learn-lms-1.onrender.com/load', {
         file_path: absolutePath
       })
     }

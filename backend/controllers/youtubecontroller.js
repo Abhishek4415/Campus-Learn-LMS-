@@ -5,7 +5,7 @@ export const getYoutubeVideos = async (req, res) => {
     const { topic } = req.body
 
     const response = await axios.post(
-      'http://127.0.0.1:8000/youtube',
+      'https://campus-learn-lms-1.onrender.com/youtube',
       { topic }
     )
 

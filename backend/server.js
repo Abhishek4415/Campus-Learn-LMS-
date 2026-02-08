@@ -42,7 +42,7 @@
   //socket.io
   const httpServer = http.createServer(app);  // Changed variable name
   const io = new Server(httpServer, {  // Using capital 'S' from imported Server
-    cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }
+    cors: { origin: "https://campus-learn-lms-zqft.vercel.app", methods: ["GET", "POST"] }
   });
 
   global.io = io;
