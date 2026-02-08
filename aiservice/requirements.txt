@@ -1,0 +1,20 @@
+flask>=3.0.0
+python-dotenv>=1.0.0
+yt-dlp>=2025.0.0
+
+# LangChain split packages (required for `langchain_community`, etc.)
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+langchain-huggingface>=0.1.0
+
+# PDF loader backend used by `PyPDFLoader`
+pypdf>=5.0.0
+
+# Vector store
+faiss-cpu>=1.8.0
+
+# Embeddings model backend for HuggingFaceEmbeddings
+sentence-transformers>=3.0.0
+
+# Gemini client used in `chatbot.py`
+google-genai>=0.6.0
