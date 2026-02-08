@@ -18,3 +18,11 @@ sentence-transformers>=3.0.0
 
 # Gemini client used in `chatbot.py`
 google-genai>=0.6.0
+flask
+flask-cors
+langchain
+langchain-community
+langchain-huggingface
+faiss-cpu
+pymupdf
+google-genai
