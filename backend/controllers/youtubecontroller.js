@@ -5,7 +5,7 @@ export const getYoutubeVideos = async (req, res) => {
     const { topic } = req.body
 
     const response = await axios.post(
-      'https://campus-learn-lms-1.onrender.com/youtube',
+      'https://campus-learn-lms-3.onrender.com/youtube',
       { topic }
     )
 
