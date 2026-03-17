@@ -12,6 +12,10 @@ load_dotenv()
 app = Flask(__name__)
 db = None
 
+@app.route("/")
+def home():
+    return "AI service running"
+
 @app.route('/load', methods=['POST'])
 def load_notes():
     global db
