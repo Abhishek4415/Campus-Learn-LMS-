@@ -15,15 +15,16 @@ function Register() {
   const [rollNumber, setRollNumber] = useState('')
   const [section, setSection] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [otp, setOtp] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
-  const [emailVerified, setEmailVerified] = useState(false)
+  // OTP states temporarily disabled.
+  // const [otp, setOtp] = useState('')
+  // const [otpSent, setOtpSent] = useState(false)
+  // const [emailVerified, setEmailVerified] = useState(false)
 
   const [message, setMessage] = useState('')
   const [isSuccessMessage, setIsSuccessMessage] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [sendingOtp, setSendingOtp] = useState(false)
-  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  // const [sendingOtp, setSendingOtp] = useState(false)
+  // const [verifyingOtp, setVerifyingOtp] = useState(false)
   const navigate = useNavigate()
 
   const yearOptions = [2026, 2027, 2028, 2029, 2030]
@@ -62,67 +63,14 @@ function Register() {
     return ''
   }
 
-  const handleSendOtp = async () => {
-    const validationMessage = validateBaseInputs()
-    if (validationMessage) {
-      setError(validationMessage)
-      return
-    }
-
-    try {
-      setSendingOtp(true)
-      setMessage('')
-      const res = await API.post('/api/auth/send-registration-otp', {
-        email: email.trim().toLowerCase(),
-        rollNumber: rollNumber.trim(),
-        role
-      })
-
-      setOtpSent(true)
-      setEmailVerified(false)
-      if (res.data?.message) {
-        setSuccess(res.data.message)
-      } else {
-        setSuccess('OTP sent to your college email')
-      }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Failed to send OTP')
-    } finally {
-      setSendingOtp(false)
-    }
-  }
-
-  const handleVerifyOtp = async () => {
-    if (!otp.trim()) {
-      setError('Please enter OTP')
-      return
-    }
-
-    try {
-      setVerifyingOtp(true)
-      setMessage('')
-      await API.post('/api/auth/verify-registration-otp', {
-        email: email.trim().toLowerCase(),
-        otp: otp.trim()
-      })
-      setEmailVerified(true)
-      setSuccess('Email verified successfully')
-    } catch (error) {
-      setError(error.response?.data?.message || 'Invalid OTP')
-    } finally {
-      setVerifyingOtp(false)
-    }
-  }
+  // OTP handlers temporarily disabled.
+  // const handleSendOtp = async () => {}
+  // const handleVerifyOtp = async () => {}
 
   const handleRegister = async () => {
     const validationMessage = validateBaseInputs()
     if (validationMessage) {
       setError(validationMessage)
-      return
-    }
-
-    if (!emailVerified) {
-      setError('Please verify your email using OTP before registering')
       return
     }
 
@@ -182,11 +130,11 @@ function Register() {
             and start learning.
           </h1>
           <p className="mt-4 text-white/90 text-sm leading-relaxed max-w-sm">
-            Role-based onboarding with email OTP verification keeps your learning space secure and organized.
+            Role-based onboarding keeps your learning space secure and organized.
           </p>
           <div className="mt-8 rounded-xl bg-white/15 border border-white/25 p-4 text-sm text-white/95 flex items-start gap-2">
             <MailCheck className="w-5 h-5 mt-0.5" />
-            Verify your email first, then finish registration in one flow.
+            Complete your profile details, then finish registration in one flow.
           </div>
         </aside>
 
@@ -216,10 +164,7 @@ function Register() {
                 placeholder={role === 'teacher' ? 'teacher@school.com' : '1234567890@krmu.edu.in'}
                 className="form-input"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  setEmailVerified(false)
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -243,9 +188,6 @@ function Register() {
                 value={role}
                 onChange={(e) => {
                   setRole(e.target.value)
-                  setOtpSent(false)
-                  setOtp('')
-                  setEmailVerified(false)
                 }}
               >
                 <option value="student">Student</option>
@@ -316,7 +258,6 @@ function Register() {
                       value={rollNumber}
                       onChange={(e) => {
                         setRollNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-                        setEmailVerified(false)
                       }}
                       required
                     />
@@ -370,6 +311,7 @@ function Register() {
             </div>
           </div>
 
+          {/* OTP section temporarily disabled
           <div className="mt-4 rounded-xl border border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-700">Email OTP Verification</p>
             <div className="flex flex-col sm:flex-row gap-2 mt-3">
@@ -405,11 +347,12 @@ function Register() {
               </div>
             )}
           </div>
+          */}
 
           <button
             type="button"
             onClick={handleRegister}
-            disabled={loading || !emailVerified}
+            disabled={loading}
             className="btn-primary mt-5"
           >
             {loading ? 'Creating Account...' : 'Register'}

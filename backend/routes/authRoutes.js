@@ -2,14 +2,14 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import crypto from 'crypto'
+// import crypto from 'crypto'
 import User from '../models/user.js'
 import GroupChat from '../models/groupChat.js'
-import RegistrationOtp from '../models/registrationOtp.js'
+// import RegistrationOtp from '../models/registrationOtp.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
-const OTP_EXPIRY_MINUTES = 10
+// const OTP_EXPIRY_MINUTES = 10
 const validCollegeNames = ['kr mangalam university']
 const validDepartments = ['computer science']
 const validYears = [2026, 2027, 2028, 2029, 2030]
@@ -21,43 +21,42 @@ const phonePattern = /^\d{10}$/
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase()
 const normalizeText = (value = '') => value.trim()
-const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
+// const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
 const isAllowed = (value, allowedList) =>
   allowedList.includes(String(value || '').trim().toLowerCase())
 
-const sendOtpEmail = async (email, otp) => {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-    return false
-  }
-
-  try {
-    const nodemailer = await import('nodemailer')
-    const transporter = nodemailer.default.createTransport({
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT),
-      secure: Number(SMTP_PORT) === 465,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS
-      }
-    })
-
-    await transporter.sendMail({
-      from: SMTP_FROM,
-      to: email,
-      subject: 'CampusLearn Email Verification OTP',
-      text: `Your OTP is ${otp}. It will expire in ${OTP_EXPIRY_MINUTES} minutes.`
-    }
-  )
-  console.log(otp);
-    return true
-  } catch (error) {
-
-    console.error('Failed to send OTP email:', error.message)
-    return false
-  }
-}
+// OTP flow temporarily disabled.
+// const sendOtpEmail = async (email, otp) => {
+//   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
+//   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+//     return false
+//   }
+//
+//   try {
+//     const nodemailer = await import('nodemailer')
+//     const transporter = nodemailer.default.createTransport({
+//       host: SMTP_HOST,
+//       port: Number(SMTP_PORT),
+//       secure: Number(SMTP_PORT) === 465,
+//       auth: {
+//         user: SMTP_USER,
+//         pass: SMTP_PASS
+//       }
+//     })
+//
+//     await transporter.sendMail({
+//       from: SMTP_FROM,
+//       to: email,
+//       subject: 'CampusLearn Email Verification OTP',
+//       text: `Your OTP is ${otp}. It will expire in ${OTP_EXPIRY_MINUTES} minutes.`
+//     })
+//     console.log(otp)
+//     return true
+//   } catch (error) {
+//     console.error('Failed to send OTP email:', error.message)
+//     return false
+//   }
+// }
 
 const validateRegistrationBody = (body) => {
   const errors = []
@@ -152,91 +151,14 @@ const validateRegistrationBody = (body) => {
   }
 }
 
-router.post('/send-registration-otp', async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body.email)
-    const role = req.body.role === 'teacher' ? 'teacher' : 'student'
-    const rollNumber = normalizeText(req.body.rollNumber)
-
-    if (!email) {
-      return res.status(400).json({ message: 'Email must not be empty' })
-    }
-    if (role === 'student' && !emailPattern.test(email)) {
-      return res.status(400).json({ message: 'Email must be in the format rollno@krmu.edu.in' })
-    }
-    if (role === 'teacher' && !generalEmailPattern.test(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address' })
-    }
-    if (role === 'student') {
-      if (!rollNumberPattern.test(rollNumber)) {
-        return res.status(400).json({ message: 'Roll number must be exactly 10 digits' })
-      }
-      const [emailRoll] = email.split('@')
-      if (emailRoll !== rollNumber) {
-        return res.status(400).json({ message: 'Roll number must match the email prefix' })
-      }
-    }
-
-    const existingUser = await User.findOne({ email })
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' })
-    }
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000))
-    const otpHash = hashOtp(otp)
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000)
-    console.log(`[OTP] email=${email} otp=${otp}`)
-
-    await RegistrationOtp.findOneAndUpdate(
-      { email },
-      { otpHash, expiresAt, verified: false },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    )
-
-    const sent = await sendOtpEmail(email, otp)
-    if (!sent) {
-      return res.status(503).json({ message: 'Failed to send OTP email. Please try again later.' })
-    }
-
-    res.json({ message: 'OTP sent successfully' })
-  } catch (error) {
-    console.error('Send OTP error:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
-  }
-})
-
-router.post('/verify-registration-otp', async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body.email)
-    const otp = normalizeText(req.body.otp)
-
-    if (!email || !otp) {
-      return res.status(400).json({ message: 'Email and OTP are required' })
-    }
-
-    const otpRecord = await RegistrationOtp.findOne({ email })
-    if (!otpRecord) {
-      return res.status(400).json({ message: 'OTP not found. Please request a new OTP.' })
-    }
-
-    if (otpRecord.expiresAt < new Date()) {
-      await RegistrationOtp.deleteOne({ _id: otpRecord._id })
-      return res.status(400).json({ message: 'OTP expired. Please request a new OTP.' })
-    }
-
-    if (otpRecord.otpHash !== hashOtp(otp)) {
-      return res.status(400).json({ message: 'Invalid OTP' })
-    }
-
-    otpRecord.verified = true
-    await otpRecord.save()
-
-    res.json({ message: 'Email verified successfully' })
-  } catch (error) {
-    console.error('Verify OTP error:', error)
-    res.status(500).json({ message: 'Server error', error: error.message })
-  }
-})
+// OTP endpoints temporarily disabled.
+// router.post('/send-registration-otp', async (req, res) => {
+//   return res.status(410).json({ message: 'Registration OTP is temporarily disabled.' })
+// })
+//
+// router.post('/verify-registration-otp', async (req, res) => {
+//   return res.status(410).json({ message: 'Registration OTP is temporarily disabled.' })
+// })
 
 // REGISTER
 router.post('/register', async (req, res) => {
@@ -261,15 +183,7 @@ router.post('/register', async (req, res) => {
       year
     } = value
 
-    const otpRecord = await RegistrationOtp.findOne({ email })
-    if (!otpRecord || !otpRecord.verified) {
-      return res.status(400).json({ message: 'Please verify your email using OTP before registering' })
-    }
-
-    if (otpRecord.expiresAt < new Date()) {
-      await RegistrationOtp.deleteOne({ _id: otpRecord._id })
-      return res.status(400).json({ message: 'OTP expired. Please request a new OTP.' })
-    }
+    // OTP verification check is intentionally bypassed for now.
 
     // Check if user exists
     const existingUser = await User.findOne({ email })
@@ -300,7 +214,6 @@ router.post('/register', async (req, res) => {
     })
 
     await user.save()
-    await RegistrationOtp.deleteOne({ email })
 
     // If student, auto-add to matching groups
     if (role === 'student') {
