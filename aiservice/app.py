@@ -12,10 +12,6 @@ load_dotenv()
 app = Flask(__name__)
 db = None
 
-@app.route("/")
-def home():
-    return "Flask server is working!"
-
 @app.route('/load', methods=['POST'])
 def load_notes():
     global db
@@ -122,6 +118,4 @@ def youtube_mode():
 
 
 if __name__ == "__main__":
-    app.run(port=8000)
-
-    # app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000)

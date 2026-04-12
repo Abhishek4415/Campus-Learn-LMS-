@@ -30,13 +30,8 @@ export const getYoutubeVideos = async (req, res) => {
 
     // Call Python backend
     const response = await axios.post(
-      'http://127.0.0.1:8000/youtube',
-      {
-        topic,
-        language,
-        duration,
-        recent
-      }
+      'https://campus-learn-lms-1.onrender.com/youtube',
+      { topic }
     )
 
     res.status(200).json({
