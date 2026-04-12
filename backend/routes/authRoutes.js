@@ -2,14 +2,11 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-// import crypto from 'crypto'
 import User from '../models/user.js'
 import GroupChat from '../models/groupChat.js'
-// import RegistrationOtp from '../models/registrationOtp.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
-// const OTP_EXPIRY_MINUTES = 10
 const validCollegeNames = ['kr mangalam university']
 const validDepartments = ['computer science']
 const validYears = [2026, 2027, 2028, 2029, 2030]
@@ -21,42 +18,8 @@ const phonePattern = /^\d{10}$/
 
 const normalizeEmail = (email = '') => email.trim().toLowerCase()
 const normalizeText = (value = '') => value.trim()
-// const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
 const isAllowed = (value, allowedList) =>
   allowedList.includes(String(value || '').trim().toLowerCase())
-
-// OTP flow temporarily disabled.
-// const sendOtpEmail = async (email, otp) => {
-//   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
-//   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
-//     return false
-//   }
-//
-//   try {
-//     const nodemailer = await import('nodemailer')
-//     const transporter = nodemailer.default.createTransport({
-//       host: SMTP_HOST,
-//       port: Number(SMTP_PORT),
-//       secure: Number(SMTP_PORT) === 465,
-//       auth: {
-//         user: SMTP_USER,
-//         pass: SMTP_PASS
-//       }
-//     })
-//
-//     await transporter.sendMail({
-//       from: SMTP_FROM,
-//       to: email,
-//       subject: 'CampusLearn Email Verification OTP',
-//       text: `Your OTP is ${otp}. It will expire in ${OTP_EXPIRY_MINUTES} minutes.`
-//     })
-//     console.log(otp)
-//     return true
-//   } catch (error) {
-//     console.error('Failed to send OTP email:', error.message)
-//     return false
-//   }
-// }
 
 const validateRegistrationBody = (body) => {
   const errors = []
@@ -151,15 +114,6 @@ const validateRegistrationBody = (body) => {
   }
 }
 
-// OTP endpoints temporarily disabled.
-// router.post('/send-registration-otp', async (req, res) => {
-//   return res.status(410).json({ message: 'Registration OTP is temporarily disabled.' })
-// })
-//
-// router.post('/verify-registration-otp', async (req, res) => {
-//   return res.status(410).json({ message: 'Registration OTP is temporarily disabled.' })
-// })
-
 // REGISTER
 router.post('/register', async (req, res) => {
   try {
@@ -182,8 +136,6 @@ router.post('/register', async (req, res) => {
       phoneNumber,
       year
     } = value
-
-    // OTP verification check is intentionally bypassed for now.
 
     // Check if user exists
     const existingUser = await User.findOne({ email })
@@ -209,8 +161,7 @@ router.post('/register', async (req, res) => {
         collegeName,
         rollNumber,
         phoneNumber
-      }),
-      isEmailVerified: true
+      })
     })
 
     await user.save()
@@ -293,10 +244,6 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password)
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' })
-    }
-
-    if (!user.isEmailVerified) {
-      return res.status(403).json({ message: 'Please verify your email before login' })
     }
 
     // Generate token

@@ -15,16 +15,10 @@ function Register() {
   const [rollNumber, setRollNumber] = useState('')
   const [section, setSection] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
-  // OTP states temporarily disabled.
-  // const [otp, setOtp] = useState('')
-  // const [otpSent, setOtpSent] = useState(false)
-  // const [emailVerified, setEmailVerified] = useState(false)
 
   const [message, setMessage] = useState('')
   const [isSuccessMessage, setIsSuccessMessage] = useState(false)
   const [loading, setLoading] = useState(false)
-  // const [sendingOtp, setSendingOtp] = useState(false)
-  // const [verifyingOtp, setVerifyingOtp] = useState(false)
   const navigate = useNavigate()
 
   const yearOptions = [2026, 2027, 2028, 2029, 2030]
@@ -62,10 +56,6 @@ function Register() {
     if (role === 'teacher' && !school.trim()) return 'School is required'
     return ''
   }
-
-  // OTP handlers temporarily disabled.
-  // const handleSendOtp = async () => {}
-  // const handleVerifyOtp = async () => {}
 
   const handleRegister = async () => {
     const validationMessage = validateBaseInputs()
@@ -310,44 +300,6 @@ function Register() {
               )}
             </div>
           </div>
-
-          {/* OTP section temporarily disabled
-          <div className="mt-4 rounded-xl border border-slate-200 p-4">
-            <p className="text-sm font-semibold text-slate-700">Email OTP Verification</p>
-            <div className="flex flex-col sm:flex-row gap-2 mt-3">
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={sendingOtp}
-                className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold disabled:opacity-60"
-              >
-                {sendingOtp ? 'Sending OTP...' : 'Send OTP'}
-              </button>
-              {otpSent && (
-                <button
-                  type="button"
-                  onClick={handleVerifyOtp}
-                  disabled={verifyingOtp || emailVerified}
-                  className="h-11 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60"
-                >
-                  {emailVerified ? 'Verified' : verifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                </button>
-              )}
-            </div>
-            {otpSent && (
-              <div className="mt-3">
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit OTP"
-                  maxLength={6}
-                  className="form-input"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                />
-              </div>
-            )}
-          </div>
-          */}
 
           <button
             type="button"

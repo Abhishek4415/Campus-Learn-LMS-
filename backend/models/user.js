@@ -32,7 +32,6 @@ const userSchema = new mongoose.Schema({
   collegeName: { type: String },
   rollNumber: { type: String },
   phoneNumber: { type: String },
-  isEmailVerified: { type: Boolean, default: false },
 
 })
 
