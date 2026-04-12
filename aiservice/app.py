@@ -1,10 +1,6 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from loader import load_pdf
-from vector_store import create_vector_store
-from chatbot import get_answer
-import yt_dlp
 
 
 from dotenv import load_dotenv
@@ -20,6 +16,10 @@ CORS(
 )
 db = None
 
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({"service": "campuslearn-aiservice", "status": "up"}), 200
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
@@ -32,6 +32,8 @@ def load_notes():
         file_path = payload.get('file_path')
         if not file_path:
             return jsonify({"error": "file_path is required"}), 400
+        from loader import load_pdf
+        from vector_store import create_vector_store
         docs = load_pdf(file_path)
         db = create_vector_store(docs)
         return jsonify({"message": "Notes loaded successfully"})
@@ -54,6 +56,7 @@ def ask():
         question = payload.get('question')
         if not question:
             return jsonify({"error": "question is required"}), 400
+        from chatbot import get_answer
         answer = get_answer(db, question)
         return jsonify({"answer": answer})
     except Exception as e:
@@ -82,6 +85,8 @@ def youtube_mode():
 
     if recent:
         query += " 2023 2024"
+
+    import yt_dlp
 
     ydl_opts = {
         'quiet': True,
