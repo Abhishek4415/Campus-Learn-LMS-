@@ -21,6 +21,13 @@ import CreateGroupChat from './pages/CreateGroupChat'
 import StudentGroups from './pages/StudentGroup'
 import GroupChat from './pages/GroupChat'
 import TeacherGroups from './pages/TeacherGroups'
+// Frontend/src/App.jsx
+import CreateAssignment from './pages/CreateAssignment'
+import AssignmentSubmissions from './pages/AssignmentSubmissions'
+import StudentAssignments from './pages/StudentAssignment'
+import TeacherAssignments from './pages/TeacherAssignments'
+import Profile from './pages/Profile'
+// import TeacherAssignments from './pages/TeacherAssignments'
 
 
 
@@ -44,6 +51,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />
@@ -154,15 +169,32 @@ function App() {
           <ProtectedRoute><GroupChat /></ProtectedRoute>
         } />
 
-          {/* Teacher Routes */}
-          <Route
-            path="/teacher-groups"
-            element={
-              <ProtectedRoute allowedRole="teacher">
-                <TeacherGroups />
-              </ProtectedRoute>
-            }
-          />
+        {/* Teacher Routes */}
+        <Route
+          path="/teacher-groups"
+          element={
+            <ProtectedRoute allowedRole="teacher">
+              <TeacherGroups />
+            </ProtectedRoute>
+          }
+        />
+
+              {/* assignment */}
+        <Route path="/create-assignment" element={
+          <TeacherRoute><CreateAssignment /></TeacherRoute>
+        } />
+
+        <Route path="/my-assignments" element={
+          <TeacherRoute><TeacherAssignments /></TeacherRoute>
+        } />
+
+        <Route path="/assignment/:id/submissions" element={
+          <TeacherRoute><AssignmentSubmissions /></TeacherRoute>
+        } />
+
+        <Route path="/student-assignments" element={
+          <ProtectedRoute><StudentAssignments /></ProtectedRoute>
+        } />
 
 
 

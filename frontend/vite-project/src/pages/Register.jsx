@@ -1,269 +1,440 @@
 import { useState } from 'react'
 import API from '../services/api'
 import { useNavigate } from 'react-router-dom'
+import { GraduationCap, MailCheck, UserCog } from 'lucide-react'
 
 function Register() {
-  const [name, setName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('student')
-  
-  // Student-specific fields for auto-enrollment
-  const [passingYear, setPassingYear] = useState('')
-  const [department, setDepartment] = useState('')
-  const [section, setSection] = useState('')
+  const [collegeName, setCollegeName] = useState('KR Mangalam University')
   const [school, setSchool] = useState('')
-  
+  const [department, setDepartment] = useState('')
+  const [year, setYear] = useState('')
+  const [rollNumber, setRollNumber] = useState('')
+  const [section, setSection] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
+
   const [message, setMessage] = useState('')
+  const [isSuccessMessage, setIsSuccessMessage] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
   const navigate = useNavigate()
 
+  const yearOptions = [2026, 2027, 2028, 2029, 2030]
+  const sectionOptions = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+  const emailRegex = /^\d{10}@krmu\.edu\.in$/i
+  const generalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const rollRegex = /^\d{10}$/
+
+  const setError = (text) => {
+    setIsSuccessMessage(false)
+    setMessage(text)
+  }
+
+  const setSuccess = (text) => {
+    setIsSuccessMessage(true)
+    setMessage(text)
+  }
+
+  const validateBaseInputs = () => {
+    if (!fullName.trim()) return 'Full name is required'
+    if (!email.trim()) return 'Email must not be empty'
+    if (role === 'student' && !emailRegex.test(email.trim())) return 'Email must be in the format rollno@krmu.edu.in'
+    if (role === 'teacher' && !generalEmailRegex.test(email.trim())) return 'Please enter a valid email address'
+    if (!password || password.length < 6) return 'Password must be at least 6 characters'
+    if (!department) return 'Department is required'
+    if (role === 'student') {
+      if (!year) return 'Year is required'
+      if (!rollNumber.trim()) return 'Roll number must not be empty'
+      if (!rollRegex.test(rollNumber.trim())) return 'Roll number must be exactly 10 digits'
+      if (email.split('@')[0] !== rollNumber.trim()) return 'Roll number must match email prefix'
+      if (!section) return 'Section is required'
+      if (!phoneNumber.trim()) return 'Phone number is required'
+      if (!rollRegex.test(phoneNumber.trim())) return 'Phone number must be exactly 10 digits'
+    }
+    if (role === 'teacher' && !school.trim()) return 'School is required'
+    return ''
+  }
+
+  const handleSendOtp = async () => {
+    const validationMessage = validateBaseInputs()
+    if (validationMessage) {
+      setError(validationMessage)
+      return
+    }
+
+    try {
+      setSendingOtp(true)
+      setMessage('')
+      const res = await API.post('/api/auth/send-registration-otp', {
+        email: email.trim().toLowerCase(),
+        rollNumber: rollNumber.trim(),
+        role
+      })
+
+      setOtpSent(true)
+      setEmailVerified(false)
+      if (res.data?.message) {
+        setSuccess(res.data.message)
+      } else {
+        setSuccess('OTP sent to your college email')
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to send OTP')
+    } finally {
+      setSendingOtp(false)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setError('Please enter OTP')
+      return
+    }
+
+    try {
+      setVerifyingOtp(true)
+      setMessage('')
+      await API.post('/api/auth/verify-registration-otp', {
+        email: email.trim().toLowerCase(),
+        otp: otp.trim()
+      })
+      setEmailVerified(true)
+      setSuccess('Email verified successfully')
+    } catch (error) {
+      setError(error.response?.data?.message || 'Invalid OTP')
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }
+
   const handleRegister = async () => {
+    const validationMessage = validateBaseInputs()
+    if (validationMessage) {
+      setError(validationMessage)
+      return
+    }
+
+    if (!emailVerified) {
+      setError('Please verify your email using OTP before registering')
+      return
+    }
+
     try {
       setLoading(true)
       setMessage('')
 
-      // Prepare registration data
-      const registerData = {
-        name,
-        email,
+      const registerPayload = {
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
         password,
+        department,
         role
       }
 
-      // Add student fields if role is student
       if (role === 'student') {
-        // Validate student fields
-        if (!passingYear || !department || !section || !school) {
-          setMessage('Please fill all student information fields')
-          setLoading(false)
-          return
-        }
-
-        registerData.passingYear = parseInt(passingYear)
-        registerData.department = department
-        registerData.section = section
-        registerData.school = school
+        registerPayload.collegeName = collegeName
+        registerPayload.year = Number(year)
+        registerPayload.rollNumber = rollNumber.trim()
+        registerPayload.section = section
+        registerPayload.phoneNumber = phoneNumber.trim()
+      } else {
+        registerPayload.school = school.trim()
       }
 
-      const response = await API.post('/api/auth/register', registerData)
-      
-      // Store token and user info
+      const response = await API.post('/api/auth/register', registerPayload)
+
       if (response.data.token) {
         localStorage.setItem('token', response.data.token)
         localStorage.setItem('user', JSON.stringify(response.data.user))
       }
 
-      setMessage('Registration successful! Redirecting...')
-      
-      // Redirect based on role
-      setTimeout(() => {
-        if (role === 'student') {
-          navigate('/student-groups')
-        } else {
-          navigate('/teacher-groups')
-        }
-      }, 1500)
+      setSuccess('Registration successful! Redirecting...')
 
+      setTimeout(() => {
+        navigate(role === 'teacher' ? '/teacher-groups' : '/student-groups')
+      }, 1200)
     } catch (error) {
       console.error('Registration error:', error)
-      setMessage(
-        error.response?.data?.message || 'Registration failed. Please try again.'
-      )
+      setError(error.response?.data?.message || 'Registration failed. Please try again.')
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        
-        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          Create Account
-        </h2>
+    <div className="auth-shell">
+      <div className="auth-grid">
+        <aside className="auth-panel">
+          <div className="flex items-center gap-2 text-white/95">
+            <GraduationCap className="w-6 h-6" />
+            <span className="text-lg font-semibold">CampusLearn</span>
+          </div>
+          <h1 className="mt-8 text-3xl font-bold leading-tight">
+            Create your account
+            <br />
+            and start learning.
+          </h1>
+          <p className="mt-4 text-white/90 text-sm leading-relaxed max-w-sm">
+            Role-based onboarding with email OTP verification keeps your learning space secure and organized.
+          </p>
+          <div className="mt-8 rounded-xl bg-white/15 border border-white/25 p-4 text-sm text-white/95 flex items-start gap-2">
+            <MailCheck className="w-5 h-5 mt-0.5" />
+            Verify your email first, then finish registration in one flow.
+          </div>
+        </aside>
 
-        {/* Name Input */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Full Name
-          </label>
-          <input
-            type="text"
-            placeholder="Enter your full name"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
+        <div className="auth-card">
+          <div className="mb-5">
+            <h2 className="text-3xl font-bold text-slate-900">Create Account</h2>
+            <p className="text-sm text-slate-600 mt-1">Simple, structured registration for students and teachers.</p>
+          </div>
 
-        {/* Email Input */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Email Address
-          </label>
-          <input
-            type="email"
-            placeholder="your.email@example.com"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Password Input */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Password
-          </label>
-          <input
-            type="password"
-            placeholder="Create a strong password"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Role Selection */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            I am a
-          </label>
-          <select
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="student">Student</option>
-            <option value="teacher">Teacher</option>
-          </select>
-        </div>
-
-        {/* Student-Specific Fields (Shown only when role is student) */}
-        {role === 'student' && (
-          <div className="space-y-4 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="text-sm font-semibold text-blue-900 mb-3">
-              Student Information (Required for Group Enrollment)
-            </h3>
-
-            {/* School Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                School
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value={school}
-                onChange={(e) => setSchool(e.target.value)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="form-label">Full Name</label>
+              <input
+                type="text"
+                placeholder="Enter your full name"
+                className="form-input"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                placeholder={role === 'teacher' ? 'teacher@school.com' : '1234567890@krmu.edu.in'}
+                className="form-input"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setEmailVerified(false)
+                }}
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                placeholder="Create a strong password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="form-label">Role</label>
+              <select
+                className="form-select"
+                value={role}
+                onChange={(e) => {
+                  setRole(e.target.value)
+                  setOtpSent(false)
+                  setOtp('')
+                  setEmailVerified(false)
+                }}
               >
-                <option value="">Select School</option>
-                <option value="SOET">SOET</option>
-                <option value="SOBS">SOBS</option>
-                <option value="SOL">SOL</option>
-                <option value="SOHMT">SOHMT</option>
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
               </select>
             </div>
 
-            {/* Department Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Department
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                required
-              >
-                <option value="">Select Department</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Mechanical">Mechanical</option>
-                <option value="Civil">Civil</option>
-                <option value="Electrical">Electrical</option>
-              </select>
-            </div>
+            {role === 'student' && (
+              <div className="sm:col-span-2">
+                <label className="form-label">College Name</label>
+                <select
+                  className="form-select"
+                  value={collegeName}
+                  onChange={(e) => setCollegeName(e.target.value)}
+                >
+                  <option value="KR Mangalam University">KR Mangalam University</option>
+                </select>
+              </div>
+            )}
+          </div>
 
-            {/* Passing Year Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passing Year
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value={passingYear}
-                onChange={(e) => setPassingYear(e.target.value)}
-                required
-              >
-                <option value="">Select Passing Year</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-                <option value="2029">2029</option>
-                <option value="2030">2030</option>
-              </select>
-            </div>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <UserCog className="w-4 h-4" />
+              {role === 'teacher' ? 'Teacher Information' : 'Academic Information'}
+            </p>
 
-            {/* Section Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Section
-              </label>
-              <select
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-                required
-              >
-                <option value="">Select Section</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="G">G</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div className={role === 'teacher' ? 'sm:col-span-2' : ''}>
+                <label className="form-label">Department</label>
+                <select
+                  className="form-select"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  required
+                >
+                  <option value="">Select Department</option>
+                  <option value="Computer Science">Computer Science</option>
+                </select>
+              </div>
+
+              {role === 'student' && (
+                <>
+                  <div>
+                    <label className="form-label">Passing Year</label>
+                    <select
+                      className="form-select"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                      required
+                    >
+                      <option value="">Select Passing Year</option>
+                      {yearOptions.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Roll Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="10-digit roll number"
+                      className="form-input"
+                      value={rollNumber}
+                      onChange={(e) => {
+                        setRollNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
+                        setEmailVerified(false)
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Section</label>
+                    <select
+                      className="form-select"
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                      required
+                    >
+                      <option value="">Select Section</option>
+                      {sectionOptions.map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Phone Number</label>
+                    <input
+                      type="text"
+                      maxLength={10}
+                      placeholder="10-digit phone number"
+                      className="form-input"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              {role === 'teacher' && (
+                <div className="sm:col-span-2">
+                  <label className="form-label">School</label>
+                  <input
+                    type="text"
+                    placeholder="Enter school name"
+                    className="form-input"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Register Button */}
-        <button
-          onClick={handleRegister}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-        >
-          {loading ? 'Creating Account...' : 'Register'}
-        </button>
-
-        {/* Message Display */}
-        {message && (
-          <div className={`mt-4 p-3 rounded-lg text-center text-sm font-medium ${
-            message.includes('successful') 
-              ? 'bg-green-100 text-green-700 border border-green-300' 
-              : 'bg-red-100 text-red-700 border border-red-300'
-          }`}>
-            {message}
+          <div className="mt-4 rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-semibold text-slate-700">Email OTP Verification</p>
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={sendingOtp}
+                className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {sendingOtp ? 'Sending OTP...' : 'Send OTP'}
+              </button>
+              {otpSent && (
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={verifyingOtp || emailVerified}
+                  className="h-11 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold disabled:opacity-60"
+                >
+                  {emailVerified ? 'Verified' : verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                </button>
+              )}
+            </div>
+            {otpSent && (
+              <div className="mt-3">
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit OTP"
+                  maxLength={6}
+                  className="form-input"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                />
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Login Link */}
-        <p className="text-center mt-6 text-sm text-gray-600">
-          Already have an account?{' '}
-          <span
-            onClick={() => navigate('/login')}
-            className="text-blue-600 font-semibold hover:underline cursor-pointer"
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={loading || !emailVerified}
+            className="btn-primary mt-5"
           >
-            Sign In
-          </span>
-        </p>
+            {loading ? 'Creating Account...' : 'Register'}
+          </button>
+
+          {message && (
+            <div className={`mt-4 p-3 rounded-lg text-center text-sm font-medium border ${
+              isSuccessMessage
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-red-50 text-red-700 border-red-200'
+            }`}>
+              {message}
+            </div>
+          )}
+
+          <p className="text-center mt-5 text-sm text-slate-600">
+            Already have an account?{' '}
+            <span
+              onClick={() => navigate('/login')}
+              className="text-blue-700 font-semibold hover:underline cursor-pointer"
+            >
+              Sign In
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   )

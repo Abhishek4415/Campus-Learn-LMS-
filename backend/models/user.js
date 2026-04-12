@@ -6,9 +6,10 @@ const userSchema = new mongoose.Schema({
 
   // Stores the user's full name
   name: String,
+  fullName: { type: String, trim: true },
 
   // Stores user's email, must be unique (no duplicates)
-  email: { type: String, unique: true },
+  email: { type: String, unique: true, lowercase: true, trim: true },
 
   // Stores user's encrypted (hashed) password
   password: String,
@@ -28,6 +29,10 @@ const userSchema = new mongoose.Schema({
   department: { type: String },
   section: { type: String },
   school:{type:String},
+  collegeName: { type: String },
+  rollNumber: { type: String },
+  phoneNumber: { type: String },
+  isEmailVerified: { type: Boolean, default: false },
 
 })
 

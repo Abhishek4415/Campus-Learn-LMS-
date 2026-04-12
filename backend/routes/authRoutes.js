@@ -2,28 +2,273 @@
 import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import User from '../models/user.js'
 import GroupChat from '../models/groupChat.js'
+import RegistrationOtp from '../models/registrationOtp.js'
+import authMiddleware from '../middleware/authMiddleware.js'
 
 const router = express.Router()
+const OTP_EXPIRY_MINUTES = 10
+const validCollegeNames = ['kr mangalam university']
+const validDepartments = ['computer science']
+const validYears = [2026, 2027, 2028, 2029, 2030]
+const validSections = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+const emailPattern = /^\d{10}@krmu\.edu\.in$/i
+const generalEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const rollNumberPattern = /^\d{10}$/
+const phonePattern = /^\d{10}$/
+
+const normalizeEmail = (email = '') => email.trim().toLowerCase()
+const normalizeText = (value = '') => value.trim()
+const hashOtp = (otp) => crypto.createHash('sha256').update(otp).digest('hex')
+const isAllowed = (value, allowedList) =>
+  allowedList.includes(String(value || '').trim().toLowerCase())
+
+const sendOtpEmail = async (email, otp) => {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+    return false
+  }
+
+  try {
+    const nodemailer = await import('nodemailer')
+    const transporter = nodemailer.default.createTransport({
+      host: SMTP_HOST,
+      port: Number(SMTP_PORT),
+      secure: Number(SMTP_PORT) === 465,
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS
+      }
+    })
+
+    await transporter.sendMail({
+      from: SMTP_FROM,
+      to: email,
+      subject: 'CampusLearn Email Verification OTP',
+      text: `Your OTP is ${otp}. It will expire in ${OTP_EXPIRY_MINUTES} minutes.`
+    }
+  )
+  console.log(otp);
+    return true
+  } catch (error) {
+
+    console.error('Failed to send OTP email:', error.message)
+    return false
+  }
+}
+
+const validateRegistrationBody = (body) => {
+  const errors = []
+  const role = body.role === 'teacher' ? 'teacher' : 'student'
+  const fullName = normalizeText(body.fullName)
+  const email = normalizeEmail(body.email)
+  const password = body.password || ''
+  const collegeName = normalizeText(body.collegeName)
+  const school = normalizeText(body.school || body.collegeName)
+  const department = normalizeText(body.department)
+  const section = normalizeText(body.section).toUpperCase()
+  const rollNumber = normalizeText(body.rollNumber)
+  const phoneNumber = normalizeText(body.phoneNumber)
+  const year = Number(body.year)
+
+  if (!fullName) errors.push('Full name is required')
+  if (!email) {
+    errors.push('Email must not be empty')
+  } else if (role === 'student' && !emailPattern.test(email)) {
+    errors.push('Email must be in the format rollno@krmu.edu.in')
+  } else if (role === 'teacher' && !generalEmailPattern.test(email)) {
+    errors.push('Please enter a valid email address')
+  }
+
+  if (!password || password.length < 6) {
+    errors.push('Password must be at least 6 characters')
+  }
+
+  if (!department) {
+    errors.push('Department is required')
+  } else if (!isAllowed(department, validDepartments)) {
+    errors.push('Invalid department')
+  }
+
+  if (role === 'student') {
+    if (!rollNumber) {
+      errors.push('Roll number must not be empty')
+    } else if (!rollNumberPattern.test(rollNumber)) {
+      errors.push('Roll number must be exactly 10 digits')
+    }
+
+    if (!body.year && body.year !== 0) {
+      errors.push('Year is required')
+    } else if (!validYears.includes(year)) {
+      errors.push('Invalid year')
+    }
+
+    if (!collegeName) {
+      errors.push('College name is required')
+    } else if (!isAllowed(collegeName, validCollegeNames)) {
+      errors.push('Invalid college name')
+    }
+
+    if (!validSections.includes(section)) {
+      errors.push('Section must be one of A, B, C, D, E, F, G, H')
+    }
+
+    if (!phoneNumber) {
+      errors.push('Phone number is required')
+    } else if (!phonePattern.test(phoneNumber)) {
+      errors.push('Phone number must be exactly 10 digits')
+    }
+
+    if (emailPattern.test(email)) {
+      const [emailRoll] = email.split('@')
+      if (rollNumber && emailRoll !== rollNumber) {
+        errors.push('Roll number must match the email prefix')
+      }
+    }
+  } else {
+    if (!school) {
+      errors.push('School is required')
+    }
+  }
+
+  return {
+    errors,
+    value: {
+      role,
+      fullName,
+      name: fullName,
+      email,
+      password,
+      collegeName,
+      school,
+      department,
+      section,
+      rollNumber,
+      phoneNumber,
+      year
+    }
+  }
+}
+
+router.post('/send-registration-otp', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email)
+    const role = req.body.role === 'teacher' ? 'teacher' : 'student'
+    const rollNumber = normalizeText(req.body.rollNumber)
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email must not be empty' })
+    }
+    if (role === 'student' && !emailPattern.test(email)) {
+      return res.status(400).json({ message: 'Email must be in the format rollno@krmu.edu.in' })
+    }
+    if (role === 'teacher' && !generalEmailPattern.test(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' })
+    }
+    if (role === 'student') {
+      if (!rollNumberPattern.test(rollNumber)) {
+        return res.status(400).json({ message: 'Roll number must be exactly 10 digits' })
+      }
+      const [emailRoll] = email.split('@')
+      if (emailRoll !== rollNumber) {
+        return res.status(400).json({ message: 'Roll number must match the email prefix' })
+      }
+    }
+
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' })
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000))
+    const otpHash = hashOtp(otp)
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000)
+    console.log(`[OTP] email=${email} otp=${otp}`)
+
+    await RegistrationOtp.findOneAndUpdate(
+      { email },
+      { otpHash, expiresAt, verified: false },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
+
+    const sent = await sendOtpEmail(email, otp)
+    if (!sent) {
+      return res.status(503).json({ message: 'Failed to send OTP email. Please try again later.' })
+    }
+
+    res.json({ message: 'OTP sent successfully' })
+  } catch (error) {
+    console.error('Send OTP error:', error)
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+})
+
+router.post('/verify-registration-otp', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email)
+    const otp = normalizeText(req.body.otp)
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' })
+    }
+
+    const otpRecord = await RegistrationOtp.findOne({ email })
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'OTP not found. Please request a new OTP.' })
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await RegistrationOtp.deleteOne({ _id: otpRecord._id })
+      return res.status(400).json({ message: 'OTP expired. Please request a new OTP.' })
+    }
+
+    if (otpRecord.otpHash !== hashOtp(otp)) {
+      return res.status(400).json({ message: 'Invalid OTP' })
+    }
+
+    otpRecord.verified = true
+    await otpRecord.save()
+
+    res.json({ message: 'Email verified successfully' })
+  } catch (error) {
+    console.error('Verify OTP error:', error)
+    res.status(500).json({ message: 'Server error', error: error.message })
+  }
+})
 
 // REGISTER
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, passingYear, department, section, school } = req.body
-
-    // Validate required fields
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Name, email, password, and role are required' })
+    const { errors, value } = validateRegistrationBody(req.body)
+    if (errors.length > 0) {
+      return res.status(400).json({ message: errors[0], errors })
     }
 
-    // Validate student-specific fields
-    if (role === 'student') {
-      if (!passingYear || !department || !section || !school) {
-        return res.status(400).json({ 
-          message: 'Students must provide passing year, department, section, and school' 
-        })
-      }
+    const {
+      role,
+      fullName,
+      name,
+      email,
+      password,
+      collegeName,
+      school,
+      department,
+      section,
+      rollNumber,
+      phoneNumber,
+      year
+    } = value
+
+    const otpRecord = await RegistrationOtp.findOne({ email })
+    if (!otpRecord || !otpRecord.verified) {
+      return res.status(400).json({ message: 'Please verify your email using OTP before registering' })
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await RegistrationOtp.deleteOne({ _id: otpRecord._id })
+      return res.status(400).json({ message: 'OTP expired. Please request a new OTP.' })
     }
 
     // Check if user exists
@@ -38,37 +283,42 @@ router.post('/register', async (req, res) => {
     // Create user
     const user = new User({
       name,
+      fullName,
       email,
       password: hashedPassword,
       role,
-      ...(role === 'student' && { 
-        passingYear: parseInt(passingYear), 
-        department, 
+      department,
+      school,
+      ...(role === 'student' && {
+        passingYear: year,
         section,
-        school 
-      })
+        collegeName,
+        rollNumber,
+        phoneNumber
+      }),
+      isEmailVerified: true
     })
 
     await user.save()
+    await RegistrationOtp.deleteOne({ email })
 
     // If student, auto-add to matching groups
     if (role === 'student') {
       const matchingGroups = await GroupChat.find({
-        passingYear: parseInt(passingYear),
+        passingYear: year,
         department,
         section,
-        school,
+        school: collegeName,
         isActive: true
       })
 
       if (matchingGroups.length > 0) {
-        // Add student to all matching groups
         await GroupChat.updateMany(
           {
-            passingYear: parseInt(passingYear),
+            passingYear: year,
             department,
             section,
-            school,
+            school: collegeName,
             isActive: true
           },
           { $addToSet: { members: user._id } }
@@ -91,14 +341,17 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
-        ...(role === 'student' && {
-          passingYear: user.passingYear,
-          department: user.department,
-          section: user.section,
-          school: user.school
-        })
+        passingYear: user.passingYear,
+        year: user.passingYear,
+        department: user.department,
+        section: user.section,
+        school: user.school,
+        collegeName: user.collegeName,
+        rollNumber: user.rollNumber,
+        phoneNumber: user.phoneNumber
       }
     })
   } catch (error) {
@@ -110,7 +363,8 @@ router.post('/register', async (req, res) => {
 // LOGIN
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body
+    const email = normalizeEmail(req.body.email)
+    const { password } = req.body
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' })
@@ -128,6 +382,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ message: 'Please verify your email before login' })
+    }
+
     // Generate token
     const token = jwt.sign(
       { userId: user._id, role: user.role },
@@ -141,14 +399,17 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        fullName: user.fullName,
         email: user.email,
         role: user.role,
-        ...(user.role === 'student' && {
-          passingYear: user.passingYear,
-          department: user.department,
-          section: user.section,
-          school: user.school
-        })
+        passingYear: user.passingYear,
+        year: user.passingYear,
+        department: user.department,
+        section: user.section,
+        school: user.school,
+        collegeName: user.collegeName,
+        rollNumber: user.rollNumber,
+        phoneNumber: user.phoneNumber
       }
     })
   } catch (error) {
@@ -177,6 +438,21 @@ router.get('/me', async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error)
     res.status(401).json({ message: 'Invalid token' })
+  }
+})
+
+// GET PROFILE (Authenticated)
+router.get('/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password')
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    res.json({ user })
+  } catch (error) {
+    console.error('Get profile error:', error)
+    res.status(500).json({ message: 'Server error' })
   }
 })
 

@@ -2,7 +2,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { 
   BookOpen, User, LogOut, Menu, X, Home, Upload, FileText, 
-  BarChart3, MessageSquare, Youtube, Book, 
+  BarChart3, MessageSquare, Youtube, Book, ClipboardList,
   UserCircle, Users, MessageCircle, Settings
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
@@ -42,6 +42,7 @@ function Navbar() {
     { path: '/', label: 'Home', icon: Home, public: true },
     { path: '/dashboard', label: 'Dashboard', icon: User, protected: true },
     { path: '/upload', label: 'Upload', icon: Upload, teacherOnly: true },
+    { path: '/my-assignments', label: 'Assignment', icon: ClipboardList, teacherOnly: true },
     { path: '/managenotes', label: 'Manage Notes', icon: FileText, teacherOnly: true },
     { path: '/teacher/subjects', label: 'Course', icon: Book, teacherOnly: true },
     { path: '/teacher/analytics', label: 'Analytics', icon: BarChart3, teacherOnly: true }
@@ -101,6 +102,17 @@ function Navbar() {
             {/* Student-only navigation items */}
             {token && user?.role === 'student' && (
               <>
+                <Link
+                  to="/student-assignments"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    isActive('/student-assignments')
+                      ? 'bg-blue-50 text-blue-700 shadow-sm'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  <span>Assignments</span>
+                </Link>
                 <Link
                   to="/notes"
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -275,6 +287,18 @@ function Navbar() {
               {/* Student links */}
               {token && user?.role === 'student' && (
                 <>
+                  <Link
+                    to="/student-assignments"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center space-x-3 px-3 py-3 rounded-lg font-medium transition-all duration-200 ${
+                      isActive('/student-assignments')
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                    }`}
+                  >
+                    <ClipboardList className="h-5 w-5" />
+                    <span>Assignments</span>
+                  </Link>
                   <Link
                     to="/notes"
                     onClick={() => setIsMenuOpen(false)}

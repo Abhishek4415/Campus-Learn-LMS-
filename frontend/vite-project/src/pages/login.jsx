@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import API from '../services/api'
 import { useNavigate } from 'react-router-dom'
-
+import { BookOpen, ShieldCheck } from 'lucide-react'
 
 function Login() {
   const navigate = useNavigate()
@@ -35,26 +35,43 @@ const handleLogin = async () => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-md">
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Welcome back
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Sign in to continue to CampusLearn
+    <div className="auth-shell">
+      <div className="auth-grid">
+        <aside className="auth-panel">
+          <div className="flex items-center gap-2 text-white/95">
+            <BookOpen className="w-6 h-6" />
+            <span className="text-lg font-semibold">CampusLearn</span>
+          </div>
+          <h1 className="mt-8 text-3xl font-bold leading-tight">
+            Learn Smarter.
+            <br />
+            Grow Faster.
+          </h1>
+          <p className="mt-4 text-white/90 text-sm leading-relaxed max-w-sm">
+            Access notes, assignments, group learning, and analytics in one focused learning workspace.
           </p>
-        </div>
+          <div className="mt-8 rounded-xl bg-white/15 border border-white/25 p-4 text-sm text-white/95 flex items-start gap-2">
+            <ShieldCheck className="w-5 h-5 mt-0.5" />
+            Secure login and role-based access for students and faculty.
+          </div>
+        </aside>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="auth-card">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-slate-900">Welcome back</h2>
+            <p className="text-sm text-slate-600 mt-1">
+              Sign in to continue to your learning dashboard.
+            </p>
+          </div>
+
+          <div className="form-field mt-0">
+            <label className="form-label">
               Email Address
             </label>
             <input
               type="email"
               placeholder="your.email@example.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -62,14 +79,14 @@ const handleLogin = async () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="form-field">
+            <label className="form-label">
               Password
             </label>
             <input
               type="password"
               placeholder="Enter your password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -80,18 +97,14 @@ const handleLogin = async () => {
           <button
             onClick={handleLogin}
             disabled={loading || !email.trim() || !password.trim()}
-            className={`w-full p-3 rounded-lg font-semibold transition-all duration-200 ${
-              loading || !email.trim() || !password.trim()
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white'
-            }`}
+            className="btn-primary mt-5"
           >
             {loading ? 'Signing in...' : 'Login'}
           </button>
 
           {message && (
             <div
-              className={`rounded-lg p-3 text-sm text-center font-medium border ${
+              className={`rounded-lg p-3 text-sm text-center font-medium border mt-4 ${
                 message.toLowerCase().includes('successful')
                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                   : 'bg-red-50 text-red-700 border-red-200'
@@ -101,19 +114,18 @@ const handleLogin = async () => {
             </div>
           )}
 
-          <div className="text-center text-sm text-gray-600 pt-2">
+          <div className="text-center text-sm text-slate-600 pt-4">
             Don&apos;t have an account?{' '}
             <button
               type="button"
               onClick={() => navigate('/register')}
-              className="text-blue-600 font-semibold hover:underline"
+              className="text-blue-700 font-semibold hover:underline"
               disabled={loading}
             >
               Create one
             </button>
           </div>
         </div>
-
       </div>
     </div>
   )
