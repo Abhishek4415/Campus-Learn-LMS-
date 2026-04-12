@@ -2,15 +2,23 @@
 import axios from 'axios'
 
 // Create an Axios instance with a fixed backend address
-const API = axios.create({
-  // Base URL of the backend server
-  baseURL: 'http://localhost:5000',
-})
+//for local
+// const API = axios.create({
+//   // Base URL of the backend server
+//   baseURL: 'http://localhost:5000',
+// })
 
+//deploy 1 
 // const API = axios.create({
 //   // Base URL of the backend server
 //   baseURL: 'https://campus-learn-lms.onrender.com'
 // })
+
+//deploy 2
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true
+});
 
 // Automatically attach token to every request
 API.interceptors.request.use((req) => {
