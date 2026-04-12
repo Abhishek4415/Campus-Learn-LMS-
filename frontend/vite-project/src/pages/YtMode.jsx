@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Search, Play } from 'lucide-react'
-import API from '../services/api'
+import axios from 'axios'
+
+const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL
 
 function YTMode() {
     const [topic, setTopic] = useState('')
@@ -18,20 +20,12 @@ function YTMode() {
         setVideos([])
 
         try {
-            const res = await API.post(
-                '/api/youtube/search',
-                {
-                    topic,
-                    language,
-                    duration,
-                    recent
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            )
+            const res = await axios.post(`${AI_BASE_URL}/youtube`, {
+                topic,
+                language,
+                duration,
+                recent
+            })
             setVideos(res.data.videos)
         } catch {
             alert('Failed to load videos')

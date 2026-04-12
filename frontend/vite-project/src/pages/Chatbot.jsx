@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import API from '../services/api'
+import axios from 'axios'
+
+const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL
 
 function Chatbot() {
   const [question, setQuestion] = useState('')
@@ -28,15 +30,9 @@ function Chatbot() {
     setLoading(true)
 
     try {
-      const res = await API.post(
-        '/api/ai/ask',
-        { question: userMsg.text },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
+      const res = await axios.post(`${AI_BASE_URL}/ask`, {
+        question: userMsg.text
+      })
 
       const botMsg = {
         role: 'bot',
