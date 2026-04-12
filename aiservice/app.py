@@ -12,14 +12,19 @@ load_dotenv()
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 db = None
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok"}), 200
 
-@app.route('/load', methods=['POST'])
+@app.route('/load', methods=['POST', 'OPTIONS'])
 def load_notes():
     global db
     try:
@@ -35,7 +40,7 @@ def load_notes():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/ask', methods=['POST'])
+@app.route('/ask', methods=['POST', 'OPTIONS'])
 def ask():
     global db
 
@@ -56,7 +61,7 @@ def ask():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/youtube', methods=['POST'])
+@app.route('/youtube', methods=['POST', 'OPTIONS'])
 def youtube_mode():
     data = request.get_json(silent=True) or {}
     topic = data.get('topic')
