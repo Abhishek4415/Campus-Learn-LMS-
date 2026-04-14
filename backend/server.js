@@ -60,7 +60,6 @@ const corsOptions = {
 
 // Allow requests from frontend (dev + production)
 app.use(cors(corsOptions))
-app.options('*', cors(corsOptions))
 
 
 //socket.io
