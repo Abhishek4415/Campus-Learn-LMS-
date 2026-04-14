@@ -28,7 +28,7 @@ const validateRegistrationBody = (body) => {
   const email = normalizeEmail(body.email)
   const password = body.password || ''
   const collegeName = normalizeText(body.collegeName)
-  const school = normalizeText(body.school || body.collegeName)
+  const school = normalizeText(body.school)
   const department = normalizeText(body.department)
   const section = normalizeText(body.section).toUpperCase()
   const rollNumber = normalizeText(body.rollNumber)
@@ -55,6 +55,10 @@ const validateRegistrationBody = (body) => {
   }
 
   if (role === 'student') {
+    if (!school) {
+      errors.push('School is required')
+    }
+
     if (!rollNumber) {
       errors.push('Roll number must not be empty')
     } else if (!rollNumberPattern.test(rollNumber)) {
@@ -172,7 +176,7 @@ router.post('/register', async (req, res) => {
         passingYear: year,
         department,
         section,
-        school: collegeName,
+        school,
         isActive: true
       })
 
@@ -182,7 +186,7 @@ router.post('/register', async (req, res) => {
             passingYear: year,
             department,
             section,
-            school: collegeName,
+            school,
             isActive: true
           },
           { $addToSet: { members: user._id } }

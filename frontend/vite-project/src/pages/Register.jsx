@@ -23,6 +23,7 @@ function Register() {
 
   const yearOptions = [2026, 2027, 2028, 2029, 2030]
   const sectionOptions = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+  const schoolOptions = ['SOET', 'SOMC', 'SOB', 'SOL', 'SOP', 'SOAHS']
   const emailRegex = /^\d{10}@krmu\.edu\.in$/i
   const generalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const rollRegex = /^\d{10}$/
@@ -43,6 +44,7 @@ function Register() {
     if (role === 'student' && !emailRegex.test(email.trim())) return 'Email must be in the format rollno@krmu.edu.in'
     if (role === 'teacher' && !generalEmailRegex.test(email.trim())) return 'Please enter a valid email address'
     if (!password || password.length < 6) return 'Password must be at least 6 characters'
+    if (!school) return 'School is required'
     if (!department) return 'Department is required'
     if (role === 'student') {
       if (!year) return 'Year is required'
@@ -53,7 +55,6 @@ function Register() {
       if (!phoneNumber.trim()) return 'Phone number is required'
       if (!rollRegex.test(phoneNumber.trim())) return 'Phone number must be exactly 10 digits'
     }
-    if (role === 'teacher' && !school.trim()) return 'School is required'
     return ''
   }
 
@@ -72,6 +73,7 @@ function Register() {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
+        school,
         department,
         role
       }
@@ -82,8 +84,6 @@ function Register() {
         registerPayload.rollNumber = rollNumber.trim()
         registerPayload.section = section
         registerPayload.phoneNumber = phoneNumber.trim()
-      } else {
-        registerPayload.school = school.trim()
       }
 
       const response = await API.post('/api/auth/register', registerPayload)
@@ -207,6 +207,23 @@ function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div className={role === 'teacher' ? 'sm:col-span-2' : ''}>
+                <label className="form-label">School</label>
+                <select
+                  className="form-select"
+                  value={school}
+                  onChange={(e) => setSchool(e.target.value)}
+                  required
+                >
+                  <option value="">Select School</option>
+                  {schoolOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={role === 'teacher' ? 'sm:col-span-2' : ''}>
                 <label className="form-label">Department</label>
                 <select
                   className="form-select"
@@ -285,19 +302,6 @@ function Register() {
                 </>
               )}
 
-              {role === 'teacher' && (
-                <div className="sm:col-span-2">
-                  <label className="form-label">School</label>
-                  <input
-                    type="text"
-                    placeholder="Enter school name"
-                    className="form-input"
-                    value={school}
-                    onChange={(e) => setSchool(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
             </div>
           </div>
 
