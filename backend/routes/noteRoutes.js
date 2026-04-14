@@ -1,5 +1,5 @@
 import express from 'express'                    // Import Express to create routes
-import upload from '../middleware/upload.js'     // Import upload middleware for file handling
+import { ensureCloudinaryConfigured, handlePdfUpload } from '../middleware/upload.js'
 import Note from '../models/note.js'              // Import Note model to save notes in database
 import authMiddleware from '../middleware/authMiddleware.js'
 import fs from 'fs'                               // Import filesystem for file deletion
@@ -10,7 +10,8 @@ const router = express.Router()                   // Create a new router for not
 // POST: Upload notes (Teacher only)
 router.post('/upload',
     authMiddleware,
-    upload.single('file'),
+    ensureCloudinaryConfigured,
+    handlePdfUpload('file'),
     async (req, res) => {
         if (req.userRole !== 'teacher') {
             return res.status(403).json({
