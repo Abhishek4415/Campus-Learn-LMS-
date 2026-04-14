@@ -15,24 +15,29 @@ def get_gemini_answer(question):
     return response.text
 
 
-def get_answer(db, question):
-    results = db.similarity_search_with_score(question, k=3)
+def get_answer(question):
+    return get_gemini_answer(question)
 
-    # If no notes loaded or no match
-    if not results:
-        return f"Answer from internet (Gemini):\n{get_gemini_answer(question)}"
 
-    docs, scores = zip(*results)
-    best_score = min(scores)
-
-    SIMILARITY_THRESHOLD = 0.75
-
-    if best_score > SIMILARITY_THRESHOLD:
-        return f"Answer from internet (Gemini):\n{get_gemini_answer(question)}"
-
-    context = "\n".join([doc.page_content for doc in docs])
-
-    return f"Answer from your notes:\n{context[:1200]}"
+# RAG implementation disabled for now.
+# def get_answer(db, question):
+#     results = db.similarity_search_with_score(question, k=3)
+#
+#     # If no notes loaded or no match
+#     if not results:
+#         return f"Answer from internet (Gemini):\n{get_gemini_answer(question)}"
+#
+#     docs, scores = zip(*results)
+#     best_score = min(scores)
+#
+#     SIMILARITY_THRESHOLD = 0.75
+#
+#     if best_score > SIMILARITY_THRESHOLD:
+#         return f"Answer from internet (Gemini):\n{get_gemini_answer(question)}"
+#
+#     context = "\n".join([doc.page_content for doc in docs])
+#
+#     return f"Answer from your notes:\n{context[:1200]}"
 
 
 #==================================================== What this code does (very simple)

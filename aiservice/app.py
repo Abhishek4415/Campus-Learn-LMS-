@@ -91,20 +91,13 @@ def load_notes():
 
 @app.route('/ask', methods=['POST', 'OPTIONS'])
 def ask():
-    global db
-
-    if db is None:
-        return jsonify({
-            "answer": "Notes are not loaded yet. Please load notes first."
-        }), 400
-
     try:
         payload = request.get_json(silent=True) or {}
         question = payload.get('question')
         if not question:
             return jsonify({"error": "question is required"}), 400
         from chatbot import get_answer
-        answer = get_answer(db, question)
+        answer = get_answer(question)
         return jsonify({"answer": answer})
     except Exception as e:
         print("ASK ERROR 👉", str(e))
