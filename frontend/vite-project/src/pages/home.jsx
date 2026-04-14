@@ -120,7 +120,7 @@ export default function Home() {
     },
     {
       icon: Brain,
-      title: 'AI-Powered Learning',
+      title: 'Learning Platform',
       description: 'Instant, thoughtful help via an intelligent assistant that actually understands your coursework.',
       gradient: 'from-violet-500 to-indigo-400',
     },
