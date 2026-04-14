@@ -39,23 +39,38 @@ connectDB()  ///connect to db
 // Create an Express application
 const app = express()
 
-// Allow requests from other websites (frontend)
-app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true
-}))
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://campus-learn-lms.vercel.app',
+  'https://campus-learn-lms-zqft.vercel.app',
+  ...(process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',').map((o) => o.trim()) : []),
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.trim()] : [])
+]
 
-//for deployment
-// app.use(cors({
-//   origin: ['https://campus-learn-lms-zqft.vercel.app'],
-//   credentials: true
-// }))
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error(`CORS blocked for origin: ${origin}`))
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
+// Allow requests from frontend (dev + production)
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 
 
 //socket.io
 const httpServer = http.createServer(app);  // Changed variable name
 const io = new Server(httpServer, {  // Using capital 'S' from imported Server
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 global.io = io;
