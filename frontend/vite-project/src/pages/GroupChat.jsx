@@ -10,6 +10,7 @@ let socket = null
 function GroupChat() {
   const { groupId } = useParams()
   const navigate = useNavigate()
+  const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [typing, setTyping] = useState('')
@@ -27,11 +28,12 @@ function GroupChat() {
 
   useEffect(() => {
     if (!socket) {
-      socket = io('http://localhost:5000', {
-        transports: ['websocket', 'polling']
+      socket = io(backendBaseUrl, {
+        transports: ['websocket', 'polling'],
+        withCredentials: true
       })
     }
-  }, [])
+  }, [backendBaseUrl])
 
   useEffect(() => {
     if (!groupId) {
@@ -201,12 +203,16 @@ function GroupChat() {
   }
 
   const downloadFile = (fileUrl, fileName) => {
+    const resolvedUrl = /^https?:\/\//i.test(fileUrl)
+      ? fileUrl
+      : `${backendBaseUrl}/${String(fileUrl).replace(/^\/+/, '')}`
+
     const cleanPath = fileUrl.startsWith('/') ? fileUrl.slice(1) : fileUrl
 
     const ext = cleanPath.split('.').pop()
 
     const link = document.createElement('a')
-    link.href = `http://localhost:5000/${cleanPath}`
+    link.href = resolvedUrl
     link.setAttribute('download', `${fileName}.${ext}`)
     link.setAttribute('target', '_blank')
 
