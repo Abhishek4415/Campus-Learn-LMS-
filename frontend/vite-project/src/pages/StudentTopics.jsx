@@ -10,11 +10,18 @@ import {
 function StudentTopics() {
   const { subjectId } = useParams()
   const navigate = useNavigate()
+  const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
   const [topics, setTopics] = useState([])
   const [completedTopics, setCompletedTopics] = useState([])
   const [loading, setLoading] = useState(true)
   const [subjectName, setSubjectName] = useState('')
+
+  const resolveFileUrl = (fileUrl) => {
+    if (!fileUrl) return ''
+    if (/^https?:\/\//i.test(fileUrl)) return fileUrl
+    return `${backendBaseUrl}/${String(fileUrl).replace(/^\/+/, '')}`
+  }
 
   const fetchData = async () => {
     try {
@@ -297,7 +304,7 @@ function StudentTopics() {
                       {/* Notes File */}
                       {topic.notesFile && (
                         <button
-                          onClick={() => window.open(`http://localhost:5000/${topic.notesFile}`)}
+                          onClick={() => window.open(resolveFileUrl(topic.notesFile))}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-all duration-200 text-sm group"
                         >
                           <FileText className="h-3.5 w-3.5 text-purple-600" />

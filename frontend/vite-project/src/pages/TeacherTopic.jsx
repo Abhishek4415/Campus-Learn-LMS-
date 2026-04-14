@@ -5,6 +5,7 @@ import { Eye, FileText, Youtube, Globe } from 'lucide-react'
 
 function TeacherTopics() {
   const { subjectId } = useParams()
+  const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
   const [topics, setTopics] = useState([])
   const [title, setTitle] = useState('')
@@ -12,6 +13,12 @@ function TeacherTopics() {
   const [articleLinks, setArticleLinks] = useState('')
   const [youtubeLinks, setYoutubeLinks] = useState('')
   const [notes, setNotes] = useState(null)
+
+  const resolveFileUrl = (fileUrl) => {
+    if (!fileUrl) return ''
+    if (/^https?:\/\//i.test(fileUrl)) return fileUrl
+    return `${backendBaseUrl}/${String(fileUrl).replace(/^\/+/, '')}`
+  }
 
   // Fetch topics
   const fetchTopics = async () => {
@@ -193,7 +200,7 @@ function TeacherTopics() {
 
                 {t.notesFile && (
                   <button
-                    onClick={() => window.open(`http://localhost:5000/${t.notesFile}`, '_blank')}
+                    onClick={() => window.open(resolveFileUrl(t.notesFile), '_blank')}
                     className="inline-flex items-center px-4 py-2 text-sm font-semibold text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 hover:shadow-md transition-all duration-200 group"
                   >
                     <Eye className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />

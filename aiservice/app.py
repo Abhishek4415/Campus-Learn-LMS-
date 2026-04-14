@@ -1,6 +1,9 @@
 import os
+import tempfile
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import requests
 
 
 from dotenv import load_dotenv
@@ -16,6 +19,24 @@ CORS(
 )
 db = None
 
+
+def _is_remote_url(value):
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in ("http", "https")
+    except Exception:
+        return False
+
+
+def _download_pdf_to_temp(file_url):
+    response = requests.get(file_url, timeout=60)
+    response.raise_for_status()
+
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    tmp_file.write(response.content)
+    tmp_file.close()
+    return tmp_file.name
+
 @app.route('/', methods=['GET'])
 def root():
     return jsonify({"service": "campuslearn-aiservice", "status": "up"}), 200
@@ -27,19 +48,45 @@ def health():
 @app.route('/load', methods=['POST', 'OPTIONS'])
 def load_notes():
     global db
+    temp_file_path = None
     try:
         payload = request.get_json(silent=True) or {}
         file_path = payload.get('file_path')
-        if not file_path:
-            return jsonify({"error": "file_path is required"}), 400
+        file_url = payload.get('file_url')
+        reset = bool(payload.get('reset', False))
+
+        if reset:
+            db = None
+
+        if not file_path and not file_url:
+            return jsonify({"error": "file_path or file_url is required"}), 400
+
+        source = file_path
+        if file_url:
+            if not _is_remote_url(file_url):
+                return jsonify({"error": "Invalid file_url"}), 400
+            temp_file_path = _download_pdf_to_temp(file_url)
+            source = temp_file_path
+
         from loader import load_pdf
-        from vector_store import create_vector_store
-        docs = load_pdf(file_path)
-        db = create_vector_store(docs)
+        from vector_store import create_vector_store, add_to_vector_store
+
+        docs = load_pdf(source)
+        if db is None:
+            db = create_vector_store(docs)
+        else:
+            db = add_to_vector_store(db, docs)
+
         return jsonify({"message": "Notes loaded successfully"})
     except Exception as e:
         print("PYTHON LOAD ERROR 👉", str(e))
         return jsonify({"error": str(e)}), 500
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+            except Exception:
+                pass
 
 
 @app.route('/ask', methods=['POST', 'OPTIONS'])

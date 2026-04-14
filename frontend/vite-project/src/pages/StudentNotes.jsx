@@ -3,6 +3,7 @@ import API from '../services/api'
 import { Search, FileText, Download,Calendar, Filter, BookOpen, User, Eye, Star, TrendingUp, GraduationCap, School } from 'lucide-react'
 
 function StudentNotes() {
+  const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
   const [notes, setNotes] = useState([])
   const [filteredNotes, setFilteredNotes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -12,6 +13,12 @@ function StudentNotes() {
   const [selectedBatch, setSelectedBatch] = useState('')
   const [sortBy, setSortBy] = useState('recent')
   const [favorites, setFavorites] = useState([])
+
+  const resolveFileUrl = (fileUrl) => {
+    if (!fileUrl) return ''
+    if (/^https?:\/\//i.test(fileUrl)) return fileUrl
+    return `${backendBaseUrl}/${String(fileUrl).replace(/^\/+/, '')}`
+  }
 
   useEffect(() => {
     const fetchAllNotes = async () => {
@@ -108,7 +115,7 @@ function StudentNotes() {
 
   const handleDownload = (fileUrl, noteTitle) => {
     const link = document.createElement('a')
-    link.href = `http://localhost:5000/${fileUrl}`
+    link.href = resolveFileUrl(fileUrl)
     link.download = `${noteTitle}.pdf`
     document.body.appendChild(link)
     link.click()
@@ -317,7 +324,7 @@ function StudentNotes() {
                 {/* Card Actions */}
                 <div className="p-4 bg-gray-50 flex items-center justify-between">
                   <a
-                    href={`http://localhost:5000/${note.fileUrl}`}
+                    href={resolveFileUrl(note.fileUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"

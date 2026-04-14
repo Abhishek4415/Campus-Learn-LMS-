@@ -3,7 +3,7 @@ import upload from '../middleware/upload.js'     // Import upload middleware for
 import Note from '../models/note.js'              // Import Note model to save notes in database
 import authMiddleware from '../middleware/authMiddleware.js'
 import fs from 'fs'                               // Import filesystem for file deletion
-import path from 'path'                           // Import path for file path manipulation
+import cloudinary from '../config/cloudinary.js'
 
 const router = express.Router()                   // Create a new router for note-related routes
 
@@ -32,6 +32,7 @@ router.post('/upload',
                 batch: req.body.batch,
                 semester: parseInt(req.body.semester),
                 fileUrl: req.file.path,
+                cloudinaryPublicId: req.file.filename,
                 uploadedBy: req.userId,
             })
             await note.save()
@@ -157,13 +158,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
             })
         }
 
-        // Delete the file from the server
-        if (note.fileUrl && fs.existsSync(note.fileUrl)) {
+        if (note.cloudinaryPublicId) {
+            try {
+                await cloudinary.uploader.destroy(note.cloudinaryPublicId, {
+                    resource_type: 'raw'
+                })
+            } catch (fileError) {
+                console.error('Error deleting cloud file:', fileError)
+            }
+        } else if (note.fileUrl && fs.existsSync(note.fileUrl)) {
             try {
                 fs.unlinkSync(note.fileUrl)
             } catch (fileError) {
-                console.error('Error deleting file:', fileError)
-                // Continue deletion even if file deletion fails
+                console.error('Error deleting local file:', fileError)
             }
         }
 

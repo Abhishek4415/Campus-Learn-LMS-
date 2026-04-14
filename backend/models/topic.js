@@ -13,6 +13,7 @@ const topicSchema = new mongoose.Schema({
 
   // 🔽 CONTENT DIRECTLY INSIDE TOPIC
   notesFile: String,
+  notesFilePublicId: String,
   articleLinks: [String],
   youtubeLinks: [String],
 

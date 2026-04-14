@@ -1,27 +1,29 @@
 import multer from 'multer'
 import path from 'path'
-// Define how and where files will be stored
-const storage = multer.diskStorage({
-    destination(req, file, cb) {
-        cb(null, 'uploads/')
-    },
-    // Create a unique file name to avoid conflicts
-    filename(req, file, cb) {
-        cb(
-            null,
-            `${Date.now()}-${file.originalname}`
-        )
-    }
+import { CloudinaryStorage } from 'multer-storage-cloudinary'
+import cloudinary from '../config/cloudinary.js'
 
+const storage = new CloudinaryStorage({
+    cloudinary,
+    params: (req, file) => {
+        const originalName = path.parse(file.originalname).name
+        const safeName = originalName.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60)
+
+        return {
+            folder: 'campuslearn/notes',
+            resource_type: 'raw',
+            format: 'pdf',
+            public_id: `${Date.now()}-${safeName}`
+        }
+    }
 })
 
-// Configure multer with storage and file type check
 const upload = multer({
     storage,
     fileFilter(req, file, cb) {
-        const ext = path.extname(file.originalname)  //allow only pdf
+        const ext = path.extname(file.originalname).toLowerCase()
         if (ext !== '.pdf') {
-            cb(new Error('Only PDFs allowed'))
+            return cb(new Error('Only PDFs allowed'))
         }
         cb(null, true)
     }

@@ -14,6 +14,7 @@ export const createTopic = async (req, res) => {
       articleLinks: req.body.articleLinks,
       youtubeLinks: req.body.youtubeLinks,
       notesFile: req.file?.path,
+      notesFilePublicId: req.file?.filename,
       createdBy: req.userId
     })
 

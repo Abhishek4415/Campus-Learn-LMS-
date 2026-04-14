@@ -15,6 +15,14 @@ def create_vector_store(documents):
     return db
 
 
+def add_to_vector_store(db, documents):
+    documents = [d for d in documents if d.page_content.strip()]
+    if not documents:
+        return db
+    db.add_documents(documents)
+    return db
+
+
 # ======================================== What this code does (very simple)
 
 # Takes text documents (PDF pages)

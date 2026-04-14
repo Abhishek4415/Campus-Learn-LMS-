@@ -3,6 +3,7 @@ import API from '../services/api'
 import { Search, FileText, Eye, Edit, Trash2, BookOpen, User, X, CheckCircle, AlertCircle, GraduationCap } from 'lucide-react'
 
 function ManageNotes() {
+  const backendBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
   const [notes, setNotes] = useState([])
   const [filteredNotes, setFilteredNotes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -19,6 +20,12 @@ function ManageNotes() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editMessage, setEditMessage] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
+
+  const resolveFileUrl = (fileUrl) => {
+    if (!fileUrl) return ''
+    if (/^https?:\/\//i.test(fileUrl)) return fileUrl
+    return `${backendBaseUrl}/${String(fileUrl).replace(/^\/+/, '')}`
+  }
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -294,7 +301,7 @@ function ManageNotes() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => window.open(`http://localhost:5000/${note.fileUrl}`, '_blank')}
+                        onClick={() => window.open(resolveFileUrl(note.fileUrl), '_blank')}
                         className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
                       >
                         <Eye className="h-4 w-4 mr-1" />
