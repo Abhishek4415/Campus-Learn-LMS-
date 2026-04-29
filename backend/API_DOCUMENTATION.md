@@ -259,23 +259,83 @@ Body (optional):
 
 ## 🔐 AUTHENTICATION ENDPOINTS
 
-### POST /api/auth/register - Register New User
+### POST /api/auth/register/send-otp - Send Registration OTP
 ```bash
-POST /api/auth/register
+POST /api/auth/register/send-otp
 Content-Type: application/json
 
 Body:
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
+  "email": "1234567890@krmu.edu.in",
   "role": "student" // or "teacher"
 }
 
 Response:
 {
+  "message": "OTP sent successfully. It will expire in 10 minutes."
+}
+```
+
+### POST /api/auth/register/verify-otp - Verify Registration OTP
+```bash
+POST /api/auth/register/verify-otp
+Content-Type: application/json
+
+Body:
+{
+  "email": "1234567890@krmu.edu.in",
+  "otp": "123456"
+}
+
+Response:
+{
+  "message": "OTP verified successfully"
+}
+```
+
+### POST /api/auth/register - Register New User (OTP Required)
+```bash
+POST /api/auth/register
+Content-Type: application/json
+
+Body (Student):
+{
+  "fullName": "John Doe",
+  "email": "1234567890@krmu.edu.in",
+  "password": "password123",
+  "role": "student",
+  "collegeName": "KR Mangalam University",
+  "school": "SOET",
+  "department": "Computer Science",
+  "year": 2028,
+  "rollNumber": "1234567890",
+  "section": "A",
+  "phoneNumber": "9876543210",
+  "otp": "123456"
+}
+
+Body (Teacher):
+{
+  "fullName": "Jane Smith",
+  "email": "jane@school.com",
+  "password": "password123",
+  "role": "teacher",
+  "school": "SOET",
+  "department": "Computer Science",
+  "otp": "123456"
+}
+
+Response:
+{
   "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "507f1f77bcf86cd799439012",
+    "name": "John Doe",
+    "fullName": "John Doe",
+    "email": "1234567890@krmu.edu.in",
+    "role": "student"
+  }
 }
 ```
 
@@ -431,3 +491,4 @@ All errors return appropriate HTTP status codes:
 ✅ **File Management** - Automatic file cleanup on deletion
 ✅ **Database Indexes** - Optimized queries for performance
 ✅ **Error Handling** - Comprehensive error responses
+

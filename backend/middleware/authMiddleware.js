@@ -1,29 +1,50 @@
-import jwt from 'jsonwebtoken'                 // Import JWT to verify login token
+import jwt from 'jsonwebtoken'
 
-const authMiddleware = (req, res, next) => {   // Middleware to protect private routes
+const requestBuckets = new Map()
 
-  const authHeader = req.headers.authorization // Get Authorization header from request
+const now = () => Date.now()
 
-  // If no token or token format is wrong
-  if (!authHeader || !authHeader.startsWith('Bearer')) {
-    return res.status(401).json({ message: 'No token provided' }) // Stop request
+const cleanupBucket = (bucket, windowMs) => bucket.filter((stamp) => now() - stamp < windowMs)
+
+const getThrottleKey = (req, extraKey = '') => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown-ip'
+  return `${ip}:${extraKey}`
+}
+
+export const createRequestThrottle = ({ windowMs, maxRequests, keyBuilder }) => {
+  return (req, res, next) => {
+    const key = keyBuilder ? keyBuilder(req) : getThrottleKey(req)
+    const existing = requestBuckets.get(key) || []
+    const validRequests = cleanupBucket(existing, windowMs)
+
+    if (validRequests.length >= maxRequests) {
+      return res.status(429).json({ message: 'Too many requests. Please try again later.' })
+    }
+
+    validRequests.push(now())
+    requestBuckets.set(key, validRequests)
+    next()
+  }
+}
+
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No token provided' })
   }
 
-  const token = authHeader.split(' ')[1]       // Extract token from "Bearer <token>"
+  const token = authHeader.split(' ')[1]
 
   try {
-    // Verify token using secret key
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-
-    req.userId = decoded.userId                    // Attach user ID to request
-    req.userRole = decoded.role                // Attach user role to request
-
-    next()                                     // Allow request to continue
-
-  }catch (error) {
-    console.log('AUTH ERROR 👉', error.message)
+    req.userId = decoded.userId
+    req.userRole = decoded.role
+    next()
+  } catch (error) {
+    console.log('AUTH ERROR:', error.message)
     res.status(401).json({ message: 'Invalid token' })
   }
 }
 
-export default authMiddleware                  // Export middleware to use in routes
+export default authMiddleware

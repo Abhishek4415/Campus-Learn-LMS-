@@ -9,6 +9,7 @@ import cors from 'cors'
 
 // Import dotenv to read secret values from .env file
 import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
 import connectDB from './config/db.js'
 import authRoutes from './routes/authRoutes.js'
 import noteRoutes from './routes/noteRoutes.js'
@@ -32,8 +33,11 @@ import assignmentRoutes from './routes/assignmentRoutes.js'
 
 
 
-// Load all variables from .env file into the program
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Load all variables from backend/.env regardless of current working directory
+dotenv.config({ path: path.join(__dirname, '.env') })
 connectDB()  ///connect to db
 
 // Create an Express application

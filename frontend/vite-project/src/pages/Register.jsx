@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import API from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import { GraduationCap, MailCheck, UserCog } from 'lucide-react'
@@ -16,9 +16,17 @@ function Register() {
   const [section, setSection] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
 
+  const [otp, setOtp] = useState('')
+  const [otpToken, setOtpToken] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
+
   const [message, setMessage] = useState('')
   const [isSuccessMessage, setIsSuccessMessage] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const [registering, setRegistering] = useState(false)
   const navigate = useNavigate()
 
   const yearOptions = [2026, 2027, 2028, 2029, 2030]
@@ -27,6 +35,29 @@ function Register() {
   const emailRegex = /^\d{10}@krmu\.edu\.in$/i
   const generalEmailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const rollRegex = /^\d{10}$/
+
+  const loading = sendingOtp || verifyingOtp || registering
+  const canResend = otpSent && cooldownSeconds <= 0 && !otpVerified && !sendingOtp
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return undefined
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldownSeconds])
+
+  const identityKey = useMemo(() => {
+    return `${role}|${email.trim().toLowerCase()}|${rollNumber.trim()}|${fullName.trim()}`
+  }, [role, email, rollNumber, fullName])
+
+  useEffect(() => {
+    setOtp('')
+    setOtpToken('')
+    setOtpVerified(false)
+    setOtpSent(false)
+    setCooldownSeconds(0)
+  }, [identityKey])
 
   const setError = (text) => {
     setIsSuccessMessage(false)
@@ -58,7 +89,29 @@ function Register() {
     return ''
   }
 
-  const handleRegister = async () => {
+  const buildRegisterPayload = () => {
+    const registerPayload = {
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      school,
+      department,
+      role,
+      otpToken
+    }
+
+    if (role === 'student') {
+      registerPayload.collegeName = collegeName
+      registerPayload.year = Number(year)
+      registerPayload.rollNumber = rollNumber.trim()
+      registerPayload.section = section
+      registerPayload.phoneNumber = phoneNumber.trim()
+    }
+
+    return registerPayload
+  }
+
+  const handleSendOtp = async () => {
     const validationMessage = validateBaseInputs()
     if (validationMessage) {
       setError(validationMessage)
@@ -66,25 +119,65 @@ function Register() {
     }
 
     try {
-      setLoading(true)
+      setSendingOtp(true)
       setMessage('')
+      const payload = buildRegisterPayload()
+      await API.post('/api/auth/register/send-otp', payload)
+      setOtpSent(true)
+      setOtpVerified(false)
+      setOtpToken('')
+      setCooldownSeconds(30)
+      setSuccess('OTP sent to your email.')
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to send OTP. Please try again.')
+    } finally {
+      setSendingOtp(false)
+    }
+  }
 
-      const registerPayload = {
-        fullName: fullName.trim(),
+  const handleVerifyOtp = async () => {
+    if (!otpSent) {
+      setError('Please send OTP first')
+      return
+    }
+    if (!otp.trim()) {
+      setError('Please enter OTP')
+      return
+    }
+
+    try {
+      setVerifyingOtp(true)
+      setMessage('')
+      const response = await API.post('/api/auth/register/verify-otp', {
         email: email.trim().toLowerCase(),
-        password,
-        school,
-        department,
-        role
-      }
+        otp: otp.trim()
+      })
+      setOtpToken(response.data.otpToken || '')
+      setOtpVerified(true)
+      setSuccess('OTP verified successfully. You can complete registration now.')
+    } catch (error) {
+      setError(error.response?.data?.message || 'OTP verification failed')
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }
 
-      if (role === 'student') {
-        registerPayload.collegeName = collegeName
-        registerPayload.year = Number(year)
-        registerPayload.rollNumber = rollNumber.trim()
-        registerPayload.section = section
-        registerPayload.phoneNumber = phoneNumber.trim()
-      }
+  const handleRegister = async () => {
+    const validationMessage = validateBaseInputs()
+    if (validationMessage) {
+      setError(validationMessage)
+      return
+    }
+
+    if (!otpVerified || !otpToken) {
+      setError('Please verify OTP before registration')
+      return
+    }
+
+    try {
+      setRegistering(true)
+      setMessage('')
+      const registerPayload = buildRegisterPayload()
 
       const response = await API.post('/api/auth/register', registerPayload)
 
@@ -102,7 +195,7 @@ function Register() {
       console.error('Registration error:', error)
       setError(error.response?.data?.message || 'Registration failed. Please try again.')
     } finally {
-      setLoading(false)
+      setRegistering(false)
     }
   }
 
@@ -124,7 +217,7 @@ function Register() {
           </p>
           <div className="mt-8 rounded-xl bg-white/15 border border-white/25 p-4 text-sm text-white/95 flex items-start gap-2">
             <MailCheck className="w-5 h-5 mt-0.5" />
-            Complete your profile details, then finish registration in one flow.
+            Verify your email with OTP before final account creation.
           </div>
         </aside>
 
@@ -144,6 +237,7 @@ function Register() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -156,6 +250,7 @@ function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -168,6 +263,7 @@ function Register() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -176,9 +272,8 @@ function Register() {
               <select
                 className="form-select"
                 value={role}
-                onChange={(e) => {
-                  setRole(e.target.value)
-                }}
+                onChange={(e) => setRole(e.target.value)}
+                disabled={loading}
               >
                 <option value="student">Student</option>
                 <option value="teacher">Teacher</option>
@@ -192,6 +287,7 @@ function Register() {
                   className="form-select"
                   value={collegeName}
                   onChange={(e) => setCollegeName(e.target.value)}
+                  disabled={loading}
                 >
                   <option value="KR Mangalam University">KR Mangalam University</option>
                 </select>
@@ -213,6 +309,7 @@ function Register() {
                   value={school}
                   onChange={(e) => setSchool(e.target.value)}
                   required
+                  disabled={loading}
                 >
                   <option value="">Select School</option>
                   {schoolOptions.map((item) => (
@@ -230,6 +327,7 @@ function Register() {
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                   required
+                  disabled={loading}
                 >
                   <option value="">Select Department</option>
                   <option value="Computer Science">Computer Science</option>
@@ -245,6 +343,7 @@ function Register() {
                       value={year}
                       onChange={(e) => setYear(e.target.value)}
                       required
+                      disabled={loading}
                     >
                       <option value="">Select Passing Year</option>
                       {yearOptions.map((yr) => (
@@ -263,10 +362,9 @@ function Register() {
                       placeholder="10-digit roll number"
                       className="form-input"
                       value={rollNumber}
-                      onChange={(e) => {
-                        setRollNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-                      }}
+                      onChange={(e) => setRollNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       required
+                      disabled={loading}
                     />
                   </div>
 
@@ -277,6 +375,7 @@ function Register() {
                       value={section}
                       onChange={(e) => setSection(e.target.value)}
                       required
+                      disabled={loading}
                     >
                       <option value="">Select Section</option>
                       {sectionOptions.map((sec) => (
@@ -297,29 +396,76 @@ function Register() {
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       required
+                      disabled={loading}
                     />
                   </div>
                 </>
               )}
-
             </div>
           </div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              disabled={sendingOtp || verifyingOtp || registering}
+              className="btn-primary"
+            >
+              {sendingOtp ? 'Sending OTP...' : otpSent ? 'Send OTP Again' : 'Send OTP'}
+            </button>
+
+            {otpSent && (
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={!canResend}
+                className="btn-primary"
+              >
+                {cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend OTP'}
+              </button>
+            )}
+          </div>
+
+          {otpSent && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Enter 6-digit OTP"
+                className="form-input sm:col-span-1"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                disabled={verifyingOtp || registering || otpVerified}
+              />
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={verifyingOtp || registering || otpVerified}
+                className="btn-primary"
+              >
+                {verifyingOtp ? 'Verifying...' : otpVerified ? 'OTP Verified' : 'Verify OTP'}
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
             onClick={handleRegister}
-            disabled={loading}
+            disabled={registering || !otpVerified || !otpToken}
             className="btn-primary mt-5"
           >
-            {loading ? 'Creating Account...' : 'Register'}
+            {registering ? 'Creating Account...' : 'Register'}
           </button>
 
           {message && (
-            <div className={`mt-4 p-3 rounded-lg text-center text-sm font-medium border ${
-              isSuccessMessage
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-red-50 text-red-700 border-red-200'
-            }`}>
+            <div
+              className={`mt-4 p-3 rounded-lg text-center text-sm font-medium border ${
+                isSuccessMessage
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-red-50 text-red-700 border-red-200'
+              }`}
+            >
               {message}
             </div>
           )}
