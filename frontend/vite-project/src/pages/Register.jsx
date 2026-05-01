@@ -129,7 +129,11 @@ function Register() {
       setCooldownSeconds(30)
       setSuccess('OTP sent to your email.')
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to send OTP. Please try again.')
+      const backendMessage = error.response?.data?.message || ''
+      const networkHint = backendMessage.toLowerCase().includes('temporarily unreachable')
+        ? 'Unable to reach email server from deployment. Please retry in 1-2 minutes.'
+        : ''
+      setError(networkHint || backendMessage || 'Failed to send OTP. Please try again.')
     } finally {
       setSendingOtp(false)
     }
@@ -486,3 +490,4 @@ function Register() {
 }
 
 export default Register
+

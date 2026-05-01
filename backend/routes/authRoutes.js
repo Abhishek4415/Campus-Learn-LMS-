@@ -3,6 +3,7 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
+import dns from 'node:dns'
 import nodemailer from 'nodemailer'
 import User from '../models/user.js'
 import GroupChat from '../models/groupChat.js'
@@ -10,6 +11,9 @@ import RegistrationOtp from '../models/registrationOtp.js'
 import authMiddleware, { createRequestThrottle } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
+
+// Prefer IPv4 first to avoid IPv6 ENETUNREACH on some hosts (e.g. Render).
+dns.setDefaultResultOrder('ipv4first')
 const validCollegeNames = ['kr mangalam university']
 const validDepartments = ['computer science']
 const validYears = [2026, 2027, 2028, 2029, 2030]
@@ -38,6 +42,7 @@ const getOtpTransporter = () =>
     host: env('SMTP_HOST', 'smtp.gmail.com'),
     port: Number(env('SMTP_PORT', '587')),
     secure: false,
+    family: 4,
     auth: env('SMTP_USER') && gmailAppPassword()
       ? { user: env('SMTP_USER'), pass: gmailAppPassword() }
       : undefined
@@ -246,7 +251,9 @@ router.post('/register/send-otp', otpSendThrottle, async (req, res) => {
     return res.json({ message: 'OTP sent successfully', expiresInSeconds: 300, resendCooldownSeconds: 30 })
   } catch (error) {
     console.error('Send OTP error:', error)
-    return res.status(500).json({ message: 'Failed to send OTP' })
+    const isNetworkError = ['ESOCKET', 'ENETUNREACH', 'EHOSTUNREACH', 'ECONNREFUSED', 'ETIMEDOUT'].includes(error?.code)
+    const message = isNetworkError ? 'Email service is temporarily unreachable. Please try again in a moment.' : 'Failed to send OTP'
+    return res.status(500).json({ message })
   }
 })
 
@@ -531,3 +538,4 @@ router.get('/profile', authMiddleware, async (req, res) => {
 })
 
 export default router
+
